@@ -8,6 +8,38 @@ import { API_URL } from "../constants/api";
 import "../global.css";
 
 
+const fetchMe = (token: string) =>
+  fetch(`${API_URL}/auth/me`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+const refreshSession = async () => {
+  const refreshToken = await SecureStore.getItemAsync('refreshToken');
+
+  if (!refreshToken) {
+    return null;
+  }
+
+  const response = await fetch(`${API_URL}/auth/refresh-token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const data = await response.json();
+  await SecureStore.setItemAsync('token', data.token);
+  await SecureStore.setItemAsync('refreshToken', data.refreshToken);
+
+  return data.token as string;
+};
+
 export default function Index() {
 
   const [destination, setDestination] = useState<'welcome' | 'create-profile' | 'conversations'>('welcome')
@@ -17,15 +49,18 @@ export default function Index() {
     const checkToken = async () => {
       try {
         const token = await SecureStore.getItemAsync('token');
-        console.log(token);
 
         if (token) {
-          const response = await fetch(`${API_URL}/auth/me`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
+          let response = await fetchMe(token);
+
+          // Le token d'accès expire au bout d'une heure : on tente de le renouveler.
+          if (response.status === 401) {
+            const newToken = await refreshSession();
+
+            if (newToken) {
+              response = await fetchMe(newToken);
+            }
+          }
 
           if (!response.ok) {
             setDestination('welcome');
@@ -96,7 +131,6 @@ export default function Index() {
         <Text className="mt-3 text-center text-sm text-gray-400 dark:text-[#9BA1A6]">
           En continuant, vous acceptez nos conditions
           {"\n"}
-          d&apos;utilisation.
           d&apos;utilisation.
         </Text>
 

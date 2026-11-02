@@ -1,3 +1,4 @@
+import { API_URL } from '@/constants/api';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { Pressable, Text, View } from 'react-native';
@@ -6,7 +7,27 @@ import { Pressable, Text, View } from 'react-native';
 export default function Communities() {
 
     const handleLogout = async () => {
+        const token = await SecureStore.getItemAsync('token');
+        const refreshToken = await SecureStore.getItemAsync('refreshToken');
+
+        try {
+            if (token && refreshToken) {
+                await fetch(`${API_URL}/auth/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({ refreshToken }),
+                });
+            }
+        } catch (error) {
+            // Hors ligne : la déconnexion locale doit quand même aboutir.
+            console.error('Erreur lors de la déconnexion :', error);
+        }
+
         await SecureStore.deleteItemAsync('token');
+        await SecureStore.deleteItemAsync('refreshToken');
         router.replace('/');
     };
 

@@ -73,7 +73,7 @@ export default function VerifyCode() {
             if (response.status === 400) {
             Alert.alert(
                 "Code incorrect",
-                data.message || "Le code saisi est incorrect."
+                "Le code saisi est incorrect ou a expiré."
             );
             } else if (response.status === 429) {
             Alert.alert(
@@ -92,7 +92,7 @@ export default function VerifyCode() {
         }
 
         // Succès
-        if (!data.token) {
+        if (!data.token || !data.refreshToken) {
             Alert.alert(
             "Erreur",
             "Le serveur n'a pas retourné de token."
@@ -102,9 +102,19 @@ export default function VerifyCode() {
 
         // Stockage sécurisé du token
         await SecureStore.setItemAsync("token", data.token);
+        await SecureStore.setItemAsync("refreshToken", data.refreshToken);
 
-        // Continuer vers la création du profil
-        router.replace("/(auth)/create-profile");
+        // Un compte existant a déjà un profil : pas besoin de le recréer
+        const meResponse = await fetch(`${API_URL}/auth/me`, {
+            headers: {
+            Authorization: `Bearer ${data.token}`,
+            },
+        });
+        const me = await meResponse.json();
+
+        router.replace(
+            me.data?.username ? "/(tabs)/conversations" : "/(auth)/create-profile"
+        );
 
         } catch (error) {
         console.error("Erreur :", error);

@@ -1,7 +1,7 @@
 import { OndaLogo } from '@/components/onda-logo';
 import { API_URL } from '@/constants/api';
 import { router } from 'expo-router';
-import { parsePhoneNumber, type CountryCode } from 'libphonenumber-js';
+import { parsePhoneNumberFromString, type CountryCode } from 'libphonenumber-js';
 import { useState } from 'react';
 import {
     Alert,
@@ -35,11 +35,13 @@ export default function Phone() {
       Alert.alert('Numéro requis', 'Veuillez saisir votre numéro de téléphone.');
       return;
     }
-    console.log(API_URL);
 
     setLoading(true);
     try {
-      const parsedPhoneNumber = parsePhoneNumber(`${countryCode}${phoneNumber}`, countryIso);
+      // L'autocomplétion du téléphone peut fournir le numéro complet (+33...).
+      const rawNumber = phoneNumber.trim();
+      const fullNumber = rawNumber.startsWith('+') ? rawNumber : `${countryCode}${rawNumber}`;
+      const parsedPhoneNumber = parsePhoneNumberFromString(fullNumber, countryIso);
 
       if (!parsedPhoneNumber || !parsedPhoneNumber.isValid()) {
         Alert.alert('Numéro invalide', 'Veuillez saisir un numéro de téléphone valide.');

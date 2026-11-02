@@ -22,7 +22,10 @@ export default function CreateProfile() {
   const [bio, setBio] = useState("");
 
   const handleSubmit = async () => {
-    if (!username.trim() || !displayName.trim()) {
+    // Le champ suggère « @jeandupont » : le @ ne fait pas partie du nom stocké.
+    const cleanUsername = username.trim().replace(/^@+/, "");
+
+    if (!cleanUsername || !displayName.trim()) {
       Alert.alert(
         "Champs requis",
         "Veuillez remplir votre nom d’utilisateur et votre nom affiché."
@@ -40,6 +43,7 @@ export default function CreateProfile() {
           "Erreur",
           "Session introuvable. Veuillez vous reconnecter."
         );
+        router.replace("/");
         return;
       }
 
@@ -50,7 +54,7 @@ export default function CreateProfile() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          username: username.trim(),
+          username: cleanUsername,
           display_name: displayName.trim(),
           bio: bio.trim(),
         }),
@@ -66,23 +70,20 @@ export default function CreateProfile() {
           const text = await response.text();
           data = {
             message:
-              text && text.includes("<")
-                ? "Le serveur a renvoyé une réponse HTML au lieu d'un JSON. Vérifie que le backend est bien démarré et que la route /api/auth/profile existe."
-                : text || "Réponse invalide du serveur.",
+              text && !text.includes("<") ? text : "Réponse invalide du serveur.",
           };
         }
       } catch (error) {
         console.error("Erreur de parsing JSON du profil :", error);
-        data = {
-          message:
-            "Le serveur n’a pas répondu avec un JSON valide. Vérifie que le backend est bien démarré et que la route /api/auth/profile est active.",
-        };
+        data = { message: "Réponse invalide du serveur." };
       }
 
       if (!response.ok) {
         Alert.alert(
           "Erreur",
-          data?.message || "Une erreur est survenue lors de la mise à jour du profil."
+          response.status === 409
+            ? "Ce nom d'utilisateur est déjà pris."
+            : data?.message || "Une erreur est survenue lors de la mise à jour du profil."
         );
         return;
       }
@@ -165,6 +166,8 @@ export default function CreateProfile() {
                 value={username}
                 onChangeText={setUsername}
                 placeholder="@jeandupont"
+                autoCapitalize="none"
+                autoCorrect={false}
                 placeholderTextColor="#9CA3AF"
                 className="h-[56px] rounded-xl border border-[#BEC2D0] bg-white px-4 text-base text-[#17181C] dark:border-[#555A61] dark:bg-[#202224] dark:text-[#ECEDEE]"
               />
